@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Estadísticas de Jugadores</title>
+  <link rel="stylesheet" href="birria.css">
+  <style>
+    .navbar-item.borrar {
+      color: red;
+      margin-left: auto;
+      cursor: pointer;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="birria.html" class="navbar-item">Jugadores</a>
+      <a href="estad.html" class="navbar-item">Agregar Estadísticas</a>
+      <span class="navbar-item borrar" onclick="confirmarReinicio()">Reiniciar Temporada🗑️</span>
+    </div>
+  </nav>
+
+  <h1>Estadísticas de Jugadores TEMPORADA 2025</h1>
+
+  <div id="topPlayers" class="top-players">
+    <h3>🏅 Líderes del equipo</h3>
+    <p><strong>🥅 Máximo goleador:</strong> <span id="topScorer"></span></p>
+    <p><strong>🅰️ Máximo asistidor:</strong> <span id="topAssists"></span></p>
+    <p><strong>🏆 Más veces MVP:</strong> <span id="topMVP"></span></p>
+  </div>
+
+  <div class="players" id="playerCards"></div>
+
+  <!-- Modal -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <h2 id="modalTitle"></h2>
+      <div id="modalBody"></div>
+    </div>
+  </div>
+
+  <script>
+    function loadData() {
+      return JSON.parse(localStorage.getItem("jugadores")) || {};
+    }
+
+    function getTotal(stats) {
+      let totalGoles = 0;
+      let totalAsistencias = 0;
+      let totalMVP = 0;
+
+      for (const fecha in stats) {
+        const entry = stats[fecha];
+        totalGoles += entry.goles || 0;
+        totalAsistencias += entry.asistencias || 0;
+
+        const valorMVP = String(entry.jugadorDelPartido || '').trim().toLowerCase();
+        if (valorMVP === 'sí' || valorMVP === 'si' || valorMVP === 'true') {
+          totalMVP++;
+        }
+      }
+
+      return { totalGoles, totalAsistencias, totalMVP };
+    }
+
+    function renderPlayers() {
+      const data = loadData();
+      const container = document.getElementById("playerCards");
+      const topScorer = document.getElementById("topScorer");
+      const topAssists = document.getElementById("topAssists");
+      const topMVP = document.getElementById("topMVP");
+
+      container.innerHTML = '';
+
+      let maxGoles = -1, maxAsistencias = -1, maxMVP = -1;
+      let jugadorGoleador = '', jugadorAsistidor = '', jugadorMVP = '';
+
+      Object.entries(data).forEach(([name, datos]) => {
+        const { totalGoles, totalAsistencias, totalMVP } = getTotal(datos.fechas || {});
+
+        if (totalGoles > maxGoles) {
+          maxGoles = totalGoles;
+          jugadorGoleador = name;
+        }
+
+        if (totalAsistencias > maxAsistencias) {
+          maxAsistencias = totalAsistencias;
+          jugadorAsistidor = name;
+        }
+
+        if (totalMVP > maxMVP) {
+          maxMVP = totalMVP;
+          jugadorMVP = name;
+        }
+
+        const fotoURL = datos.foto || 'https://via.placeholder.com/150'; // Imagen por defecto
+
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+        <img src="${fotoURL}" alt="Foto de ${name}" style="width: 150px; height: 150px; object-fit: cover; border-radius: 10px; margin: 0 auto 10px auto; display: block;">
+          <h3>${name}</h3>
+          <p>Goles totales: ${totalGoles}</p>
+          <p>Asistencias totales: ${totalAsistencias}</p>
+          <p>MVP totales: ${totalMVP}</p>
+        `;
+        card.onclick = () => showDetails(name, datos.fechas || {});
+        container.appendChild(card);
+      });
+
+      topScorer.textContent = jugadorGoleador ? `${jugadorGoleador} (${maxGoles} goles)` : 'N/A';
+      topAssists.textContent = jugadorAsistidor ? `${jugadorAsistidor} (${maxAsistencias} asistencias)` : 'N/A';
+      topMVP.textContent = jugadorMVP ? `${jugadorMVP} (${maxMVP} MVP)` : 'N/A';
+    }
+
+    function showDetails(name, fechas) {
+      document.getElementById("modalTitle").textContent = `Detalles por fecha de ${name}`;
+      const body = document.getElementById("modalBody");
+      body.innerHTML = '';
+
+      if (Object.keys(fechas).length === 0) {
+        body.innerHTML = '<p>No hay datos registrados por fecha.</p>';
+      } else {
+        Object.entries(fechas).forEach(([fecha, stats]) => {
+          let categoria = '';
+          const goles = stats.goles || 0;
+          if (goles === 2) categoria = ' (Doblete)';
+          else if (goles === 3) categoria = ' (Hat-trick)';
+          else if (goles === 4) categoria = ' (Póker)';
+          else if (goles === 5) categoria = ' (Repóker)';
+          else if (goles > 5) categoria = ' (Élite)';
+
+          const valorMVP = String(stats.jugadorDelPartido || '').trim().toLowerCase();
+          const isMVP = valorMVP === 'sí' || valorMVP === 'si' || valorMVP === 'true';
+
+          const div = document.createElement("div");
+          div.innerHTML = `
+            <strong>${fecha}</strong>
+            <ul>
+              <li>Goles: ${goles}${categoria}</li>
+              <li>Asistencias: ${stats.asistencias || 0}</li>
+              ${isMVP ? '<li><strong>🏆 Jugador del Partido</strong></li>' : ''}
+            </ul>
+          `;
+          body.appendChild(div);
+        });
+      }
+
+      document.getElementById("modal").classList.remove("hidden");
+    }
+
+    function closeModal() {
+      document.getElementById("modal").classList.add("hidden");
+    }
+
+    function borrarTodo() {
+      if (confirm("¿Estás seguro de que quieres borrar todos los datos? Esta acción no se puede deshacer.")) {
+        localStorage.removeItem("jugadores");
+        renderPlayers();
+        alert("Datos eliminados correctamente.");
+      }
+    }
+
+    renderPlayers();
+
+    function confirmarReinicio() {
+    const contraseña = prompt("Ingresa la contraseña para reiniciar la temporada:");
+    const contraseñaCorrecta = "12345"; // Cambia esto por la contraseña que quieras
+
+    if (contraseña === contraseñaCorrecta) {
+      borrarTodo();
+    } else {
+      alert("Contraseña incorrecta. No se reinició la temporada.");
+    }
+  }
+
+  function borrarTodo() {
+    if (confirm("¿Estás seguro de que quieres borrar todos los datos? Esta acción no se puede deshacer.")) {
+      localStorage.removeItem("jugadores");
+      renderPlayers();
+      alert("Datos eliminados correctamente.");
+    }
+  }
+  </script>
+
+</body>
+</html>

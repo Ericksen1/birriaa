@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Agregar Estadísticas</title>
+  <link rel="stylesheet" href="estad.css">
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-container">
+      <a href="birria.html" class="navbar-item">Jugadores</a>
+      <a href="estad.html" class="navbar-item">Agregar Estadísticas</a>
+    </div>
+  </nav>
+
+  <h1>Agregar estadísticas de jugadores</h1>
+
+  <h3>Registrar nuevo jugador</h3>
+  <input type="text" id="playerName" placeholder="Nombre del jugador"><br><br>
+  <label for="playerPhoto">Foto del jugador:</label>
+  <input type="file" id="playerPhoto" accept="image/*"><br><br>
+  <button onclick="addPlayer()">Registrar Jugador</button>
+
+  <hr>
+
+  <h3>Agregar estadísticas</h3>
+
+  <label for="playerSelect">Selecciona un jugador:</label>
+  <select id="playerSelect"></select><br><br>
+
+  <label for="date">Fecha:</label>
+  <input type="date" id="date"><br><br>
+
+  <label for="goles">Goles:</label>
+  <input type="number" id="goles" value="0" min="0"><br><br>
+
+  <label for="asistencias">Asistencias:</label>
+  <input type="number" id="asistencias" value="0" min="0"><br><br>
+
+  <label for="jugadorPartido">Jugador del Partido:</label>
+  <select id="jugadorPartido">
+    <option value="no" selected>No</option>
+    <option value="sí">Sí</option>
+  </select><br><br>
+
+  <button onclick="addStats()">Agregar estadísticas</button>
+
+  <hr>
+
+  <h3>Eliminar jugador</h3>
+  <label for="removePlayerSelect">Selecciona un jugador para eliminar:</label>
+  <select id="removePlayerSelect"></select><br><br>
+  <button onclick="removePlayer()">Eliminar Jugador</button>
+
+  <script>
+    function loadPlayers() {
+      const playerSelect = document.getElementById('playerSelect');
+      const removePlayerSelect = document.getElementById('removePlayerSelect');
+      const data = JSON.parse(localStorage.getItem('jugadores')) || {};
+
+      playerSelect.innerHTML = "";
+      removePlayerSelect.innerHTML = "";
+
+      const defaultOption = document.createElement('option');
+      defaultOption.text = "Selecciona un jugador";
+      defaultOption.disabled = true;
+      defaultOption.selected = true;
+
+      playerSelect.appendChild(defaultOption);
+      removePlayerSelect.appendChild(defaultOption.cloneNode(true));
+
+      Object.keys(data).forEach(name => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = name;
+        playerSelect.appendChild(option);
+        removePlayerSelect.appendChild(option.cloneNode(true));
+      });
+    }
+
+    function addPlayer() {
+      const name = document.getElementById('playerName').value.trim();
+      const photoInput = document.getElementById('playerPhoto');
+      if (!name) {
+        alert("Escribe el nombre del jugador");
+        return;
+      }
+
+      const data = JSON.parse(localStorage.getItem('jugadores')) || {};
+
+      if (data[name]) {
+        alert(`El jugador ${name} ya existe`);
+        return;
+      }
+
+      // Si hay una foto, leerla como Base64
+      if (photoInput.files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const base64Image = e.target.result;
+          data[name] = { fechas: {}, foto: base64Image };
+          localStorage.setItem('jugadores', JSON.stringify(data));
+          alert(`Jugador ${name} registrado con foto`);
+          loadPlayers();
+        };
+        reader.readAsDataURL(photoInput.files[0]);
+      } else {
+        // Sin foto
+        data[name] = { fechas: {} };
+        localStorage.setItem('jugadores', JSON.stringify(data));
+        alert(`Jugador ${name} registrado sin foto`);
+        loadPlayers();
+      }
+
+      document.getElementById('playerName').value = '';
+      document.getElementById('playerPhoto').value = '';
+    }
+
+    function addStats() {
+      const name = document.getElementById('playerSelect').value;
+      const date = document.getElementById('date').value;
+      const goles = parseInt(document.getElementById('goles').value);
+      const asistencias = parseInt(document.getElementById('asistencias').value);
+      const jugadorDelPartido = document.getElementById('jugadorPartido').value;
+
+      if (!name || !date) {
+        alert("Selecciona un jugador y una fecha");
+        return;
+      }
+
+      const data = JSON.parse(localStorage.getItem('jugadores')) || {};
+
+      if (!data[name]) {
+        alert("Jugador no encontrado");
+        return;
+      }
+
+      if (!data[name].fechas[date]) {
+        data[name].fechas[date] = { goles: 0, asistencias: 0, jugadorDelPartido: "no" };
+      }
+
+      data[name].fechas[date].goles += goles;
+      data[name].fechas[date].asistencias += asistencias;
+      data[name].fechas[date].jugadorDelPartido = jugadorDelPartido;
+
+      localStorage.setItem('jugadores', JSON.stringify(data));
+      alert("Estadísticas actualizadas correctamente");
+
+      document.getElementById('date').value = '';
+      document.getElementById('goles').value = 0;
+      document.getElementById('asistencias').value = 0;
+      document.getElementById('jugadorPartido').value = 'no';
+    }
+
+    function removePlayer() {
+      const playerName = document.getElementById('removePlayerSelect').value;
+
+      if (!playerName) {
+        alert("Selecciona un jugador para eliminar");
+        return;
+      }
+
+      const data = JSON.parse(localStorage.getItem('jugadores')) || {};
+
+      if (data[playerName]) {
+        delete data[playerName];
+        localStorage.setItem('jugadores', JSON.stringify(data));
+        alert(`Jugador ${playerName} eliminado`);
+        loadPlayers();
+      } else {
+        alert("Jugador no encontrado");
+      }
+    }
+
+    window.onload = loadPlayers;
+  </script>
+</body>
+</html>
